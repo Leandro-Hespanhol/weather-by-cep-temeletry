@@ -166,6 +166,8 @@ func getWeather(ctx context.Context, city string) (float64, error) {
 	span.SetAttributes(attribute.String("city", city))
 
 	apiKey := os.Getenv("WEATHER_API_KEY")
+	apiKey = "2ed235e3ee27451a89231449260502"
+
 	if apiKey == "" {
 		span.SetAttributes(attribute.String("error", "missing api key"))
 		return 0, fmt.Errorf("WEATHER_API_KEY not set")
