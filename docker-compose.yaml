@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - weather-network
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.96.0
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    depends_on:
+      - zipkin
+    networks:
+      - weather-network
+
+  service-a:
+    build:
+      context: ./service-a
+      dockerfile: Dockerfile
+    container_name: service-a
+    ports:
+      - "8080:8080"
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+      - SERVICE_B_URL=http://service-b:8081
+    depends_on:
+      - otel-collector
+      - service-b
+    networks:
+      - weather-network
+
+  service-b:
+    build:
+      context: ./service-b
+      dockerfile: Dockerfile
+    container_name: service-b
+    ports:
+      - "8081:8081"
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+      - WEATHER_API_KEY=${WEATHER_API_KEY}
+    depends_on:
+      - otel-collector
+    networks:
+      - weather-network
+
+networks:
+  weather-network:
+    driver: bridge
